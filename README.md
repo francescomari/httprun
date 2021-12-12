@@ -10,7 +10,7 @@ and focus on your own cancellation strategy by using a standard
 ## Install
 
 ```
-get get github.com/francescomari/httprun
+go get github.com/francescomari/httprun
 ```
 
 ## Documentation
