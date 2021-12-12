@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"net/http"
 	"runtime"
 	"testing"
 
@@ -121,6 +122,29 @@ func testSetupError(t *testing.T, runServer serverRunner) {
 
 	checkErrorsLength(t, errs, 1)
 	checkErrorsContain(t, errs, errServe)
+}
+
+func TestHandleErrors(t *testing.T) {
+	var (
+		errOne = errors.New("first")
+		errTwo = errors.New("second")
+	)
+
+	if err := httprun.HandleErrors(nil); err != nil {
+		t.Fatalf("error returned: %v", err)
+	}
+
+	errors := []error{
+		context.Canceled,
+		context.DeadlineExceeded,
+		http.ErrServerClosed,
+		errOne,
+		errTwo,
+	}
+
+	if err := httprun.HandleErrors(errors); err != errOne {
+		t.Fatalf("invalid error: %v", err)
+	}
 }
 
 type mockServer struct {

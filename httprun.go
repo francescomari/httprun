@@ -3,6 +3,7 @@ package httprun
 import (
 	"context"
 	"net"
+	"net/http"
 	"time"
 )
 
@@ -109,4 +110,32 @@ func (s Server) shutdownGracefully() error {
 	defer cancel()
 
 	return s.HTTPServer.Shutdown(ctx)
+}
+
+// HandleErrors simplifies the handling of errors returned by the Server.
+// HandleErrors masks out cancellation errors from the context package and
+// http.ErrServerClosed, which is always returned by  most of the functions in
+// http.Server. HandleErrors returns the first non-nil error after masking out
+// the unwanted ones. If all the errors were masked out, or if no errors were
+// passed as input, HandleErrors returns nil.
+func HandleErrors(errors []error) error {
+	for _, err := range errors {
+		if err := handleError(err); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleError(err error) error {
+	switch err {
+	case context.DeadlineExceeded:
+		return nil
+	case context.Canceled:
+		return nil
+	case http.ErrServerClosed:
+		return nil
+	default:
+		return err
+	}
 }
