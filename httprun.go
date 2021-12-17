@@ -8,7 +8,7 @@ import (
 )
 
 // HTTPServer is an HTTP server that can be started and shut down. HTTPServer
-// mimicks the interface of http.Server. Every method in this interface has the
+// mimics the interface of http.Server. Every method in this interface has the
 // same semantics as the corresponding methods in http.Server.
 type HTTPServer interface {
 	ListenAndServe() error
