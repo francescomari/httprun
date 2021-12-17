@@ -134,7 +134,7 @@ func TestHandleErrors(t *testing.T) {
 		t.Fatalf("error returned: %v", err)
 	}
 
-	errors := []error{
+	errorsToHandle := []error{
 		context.Canceled,
 		context.DeadlineExceeded,
 		http.ErrServerClosed,
@@ -142,7 +142,7 @@ func TestHandleErrors(t *testing.T) {
 		errTwo,
 	}
 
-	if err := httprun.HandleErrors(errors); err != errOne {
+	if err := httprun.HandleErrors(errorsToHandle); err != errOne {
 		t.Fatalf("invalid error: %v", err)
 	}
 }
