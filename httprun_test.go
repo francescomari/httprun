@@ -16,7 +16,7 @@ var (
 	errShutdown = errors.New("shutdown")
 )
 
-type serverRunner func(context.Context, httprun.Server) []error
+type serverRunner func(context.Context, httprun.Server) error
 
 type testRunner func(*testing.T, serverRunner)
 
@@ -27,25 +27,25 @@ func TestServer(t *testing.T) {
 	}{
 		{
 			name: "listen-and-serve",
-			runServer: func(ctx context.Context, s httprun.Server) []error {
+			runServer: func(ctx context.Context, s httprun.Server) error {
 				return s.ListenAndServe(ctx)
 			},
 		},
 		{
 			name: "listen-and-serve-tls",
-			runServer: func(ctx context.Context, s httprun.Server) []error {
+			runServer: func(ctx context.Context, s httprun.Server) error {
 				return s.ListenAndServeTLS(ctx, "cert", "key")
 			},
 		},
 		{
 			name: "serve",
-			runServer: func(ctx context.Context, s httprun.Server) []error {
+			runServer: func(ctx context.Context, s httprun.Server) error {
 				return s.Serve(ctx, nil)
 			},
 		},
 		{
 			name: "serve-tls",
-			runServer: func(ctx context.Context, s httprun.Server) []error {
+			runServer: func(ctx context.Context, s httprun.Server) error {
 				return s.ServeTLS(ctx, nil, "cert", "key")
 			},
 		},
@@ -92,9 +92,9 @@ func testServe(t *testing.T, runServer serverRunner) {
 		HTTPServer: server,
 	}
 
-	errs := runServer(ctx, s)
-
-	checkErrorsLength(t, errs, 0)
+	if err := runServer(ctx, s); err != nil {
+		t.Fatalf("error: %v", err)
+	}
 }
 
 func testErrors(t *testing.T, runServer serverRunner) {
@@ -104,11 +104,9 @@ func testErrors(t *testing.T, runServer serverRunner) {
 		HTTPServer: server,
 	}
 
-	errs := runServer(ctx, s)
-
-	checkErrorsLength(t, errs, 2)
-	checkErrorsContain(t, errs, errServe)
-	checkErrorsContain(t, errs, errShutdown)
+	if err := runServer(ctx, s); err != errShutdown {
+		t.Fatalf("invalid error: %v", err)
+	}
 }
 
 func testSetupError(t *testing.T, runServer serverRunner) {
@@ -118,31 +116,7 @@ func testSetupError(t *testing.T, runServer serverRunner) {
 		HTTPServer: server,
 	}
 
-	errs := runServer(context.Background(), s)
-
-	checkErrorsLength(t, errs, 1)
-	checkErrorsContain(t, errs, errServe)
-}
-
-func TestHandleErrors(t *testing.T) {
-	var (
-		errOne = errors.New("first")
-		errTwo = errors.New("second")
-	)
-
-	if err := httprun.HandleErrors(nil); err != nil {
-		t.Fatalf("error returned: %v", err)
-	}
-
-	errorsToHandle := []error{
-		context.Canceled,
-		context.DeadlineExceeded,
-		http.ErrServerClosed,
-		errOne,
-		errTwo,
-	}
-
-	if err := httprun.HandleErrors(errorsToHandle); err != errOne {
+	if err := runServer(context.Background(), s); err != errServe {
 		t.Fatalf("invalid error: %v", err)
 	}
 }
@@ -186,7 +160,7 @@ func newMockServerStartingAndStopping(t *testing.T) (context.Context, httprun.HT
 	serve := func() error {
 		close(serveCalled)
 		<-shutdownCalled
-		return nil
+		return http.ErrServerClosed
 	}
 
 	server := mockServer{
@@ -222,7 +196,7 @@ func newMockServerStartingAndStoppingWithErrors(t *testing.T) (context.Context, 
 	serve := func() error {
 		close(serveCalled)
 		<-shutdownCalled
-		return errServe
+		return http.ErrServerClosed
 	}
 
 	server := mockServer{
@@ -283,26 +257,6 @@ func newContextForChannel(t *testing.T, done <-chan struct{}) context.Context {
 	}()
 
 	return ctx
-}
-
-func checkErrorsLength(t *testing.T, errors []error, length int) {
-	t.Helper()
-
-	if len(errors) != length {
-		t.Fatalf("expected %d errors, got %d", len(errors), length)
-	}
-}
-
-func checkErrorsContain(t *testing.T, errors []error, target error) {
-	t.Helper()
-
-	for _, err := range errors {
-		if err == target {
-			return
-		}
-	}
-
-	t.Fatalf("error '%v' not found", target)
 }
 
 func checkNoGoroutineLeaks(t *testing.T) {
