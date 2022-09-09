@@ -19,8 +19,8 @@ type HTTPServer interface {
 
 // Server is a server that can be shut down gracefully. Every method defined on
 // Server has the same semantics as the method with the same name in
-// http.Server, with additional behaviour to guarantee a graceful shutdown of
-// the server.
+// http.Server, with additional behavior to guarantee a graceful shutdown of the
+// server.
 type Server struct {
 	HTTPServer      HTTPServer
 	ShutdownTimeout time.Duration
